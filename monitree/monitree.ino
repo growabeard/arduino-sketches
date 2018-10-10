@@ -1,5 +1,3 @@
-//import Adafruit Unified Sensor & DHT sensor library
-
 #include "SoftwareSerial.h"
 #include <Adafruit_Sensor.h>
 
@@ -22,17 +20,15 @@ DHT dht( DHT_SENSOR_PIN, DHTTYPE );
 // initialize the library with the numbers of the interface pins
 //LiquidCrystal lcd(7, 8, 9, 10, 11, 12);
 
-//String ssid = "monitree-hub";
-String ssid = "chrisphone";
+String ssid = "";
 
-//String password = "bungusamongus";
-String password = "buttsbutts";
+String password = "";
 
 SoftwareSerial esp(4, 5);// RX, TX
 
-String server = "monitree.herokuapp.com"; // www.example.com
+String server = ""; 
 
-String uri = "/monitree/v1/readings";// our example is /esppost.php
+String uri = "";
 
 float sensorData[4];
 
@@ -47,6 +43,18 @@ void setup() {
   esp.begin(115200);
   reset();
   connectWifi();
+}
+
+void loop () {
+  Serial.println("woke up from my nap..");
+  // convert the bit data to string form
+
+  String data = readData();
+
+  httpPost(data);
+  Serial.println("sleeping for 3600000 milliseconds.");
+  delay(3600000);
+
 }
 
 //reset the esp8266 module
@@ -80,27 +88,17 @@ String readData () {
 
   getTempAndHumidity();
 
+  getPhotocell();
+
   getSoilMoisture();
-  if (sensorData[2] < 25.0) waterPlant(&wateredPlant);
-  sendPacket = sendPacket + sensorData[0] + ",\"creator\": \"sensor\",\"moisture\":" + sensorData[2] +",\"humidity\":" + sensorData[1] +",\"watered\":" + String(wateredPlant) + "}";
+  maybeWaterPlant(sensorData[2], &wateredPlant);
+  sendPacket = sendPacket + sensorData[0] + ",\"creator\": \"sensor\",\"moisture\":" + sensorData[2] +",\"humidity\":" + sensorData[1] +",\"light\":" + sensorData[3] +",\"watered\":" + String(wateredPlant) + "}";
   Serial.println(sendPacket);
   return sendPacket;
 }
 
-void waterPlant(boolean wateredPlant) {
+void maybeWaterPlant(float moisture, boolean wateredPlant) {
   wateredPlant = false;
-}
-
-void loop () {
-  
-  // convert the bit data to string form
-
-  String data = readData();
-
-  httpPost(data);
-
-  delay(600000);
-
 }
 
 void httpPost (String data) {
@@ -204,6 +202,7 @@ void getSoilMoisture()
 {
     digitalWrite(soilPower, HIGH);//turn D7 "On"
     delay(10);//wait 10 milliseconds 
-    sensorData[2] = map(analogRead(soilPin), 0, 630, 0, 100);//Read the SIG value form sensor 
+    float moisture = analogRead(soilPin);
+    sensorData[2] = map(moisture, 0, 670, 0, 100);//Read the SIG value form sensor 
     digitalWrite(soilPower, LOW);//turn D7 "Off"
 }
