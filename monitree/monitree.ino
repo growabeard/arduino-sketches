@@ -3,7 +3,16 @@
 
 #include <DHT_U.h>
 #include <DHT.h>
-#include <LiquidCrystal.h>
+
+#include <LiteESP8266Client.h>
+#include <LiteSerialLogger.h>
+
+//AT+UART_DEF=9600,8,1,0,0 to set esp baud
+
+#define LOGGER Serial
+
+// Radio!
+LiteESP8266 radio;
 
 #define DHTTYPE DHT11
 
@@ -20,189 +29,68 @@ DHT dht( DHT_SENSOR_PIN, DHTTYPE );
 // initialize the library with the numbers of the interface pins
 //LiquidCrystal lcd(7, 8, 9, 10, 11, 12);
 
-String ssid = "";
+// Set your SSID and password here, obviously.
+// If you don't have a password, you should be able to leave it blank.
+//const char ssid[] PROGMEM = "GM Guest WiFi";
+//const char password[] PROGMEM = "";
+const char ssid[] PROGMEM = "WhateverYouWant";
+const char password[] PROGMEM = "chr3ls3y";
 
-String password = "";
 
-SoftwareSerial esp(4, 5);// RX, TX
+const char host[] PROGMEM = "http://monitree.herokuapp.com";
+const int port PROGMEM = 80;
 
-String server = ""; 
+const char http_post_request[] PROGMEM = "POST http://monitree.herokuapp.com/readings HTTP/1.1\r\n"
+                                          "Host: monitree.herokuapp.com\r\n"
+                                          "Content-Type: application/json\r\n";
+const char http_post_content_length[] PROGMEM = "Content-length: ";
+const char http_post_crlf[] PROGMEM = "\r\n";
+const char con_data[] PROGMEM = "{\"name\":\"tree\",\"date\":\",\"temp\":77.00,\"creator\":\"sensor\",\"moisture\":62.00,\"humidity\":38.00,\"light\":69.00,\"watered\":false}";
 
-String uri = "";
 
 float sensorData[4];
 
 void setup() {
-  Serial.begin( 9600);
-  Serial.println("Starting");
- 
+  LOGGER.begin(9600);
+  delay(1000);
+  
+  radio.begin(115200);
+
+  resetRadioBaud();
+
+  radio.begin(9600);
+
+  // If the radio is already in station mode, there's no need to do this every
+  // time.
+  if (radio.set_station_mode()) {
+    LOGGER.println(F("Set station mode success."));
+  } else {
+    LOGGER.println(F("Set station mode failed."));
+  } 
   dht.begin();
   pinMode(soilPower, OUTPUT);//Set D7 as an OUTPUT
   digitalWrite(soilPower, LOW);//Set to LOW so no power is flowing through the sensor
-
-  esp.begin(115200);
-  reset();
-  connectWifi();
 }
 
 void loop () {
-  Serial.println("woke up from my nap..");
-  // convert the bit data to string form
+  LOGGER.println("woke up from my nap..");
+  connectWifi();
+  connectHost();
 
-  String data = readData();
-
-  httpPost(data);
-  Serial.println("sleeping for 3600000 milliseconds.");
-  delay(3600000);
-
-}
-
-//reset the esp8266 module
-
-void reset() {
-    Serial.println("reset wifi");
-  boolean reset = sendCommand("AT+RST", 5, "OK");
-
-  if (reset) Serial.println("Module Reset");
-
-}
-
-//connect to your wifi network
-
-void connectWifi() {
-  Serial.println("connect wifi");
-  boolean ssidConnect = sendCommand("AT+CWJAP=\"" + ssid + "\",\"" + password + "\"",5,"OK");
-
-  if (ssidConnect) {
-    Serial.println("Connected!");
-  } else {
-    Serial.println("Cannot connect to wifi");
-    connectWifi();
-  }
-}
-
-String readData () {
-  boolean wateredPlant = false;
-  Serial.println("reading data");
-  String sendPacket = "{\"name\": \"tree\",\"date\": \"\",\"temp\":";
-
-  getTempAndHumidity();
-
-  getPhotocell();
-
-  getSoilMoisture();
-  maybeWaterPlant(sensorData[2], &wateredPlant);
-  sendPacket = sendPacket + sensorData[0] + ",\"creator\": \"sensor\",\"moisture\":" + sensorData[2] +",\"humidity\":" + sensorData[1] +",\"light\":" + sensorData[3] +",\"watered\":" + String(wateredPlant) + "}";
-  Serial.println(sendPacket);
-  return sendPacket;
-}
-
-void maybeWaterPlant(float moisture, boolean wateredPlant) {
-  wateredPlant = false;
-}
-
-void httpPost (String data) {
-
-  boolean init = sendCommand("AT+CIPSTART=\"TCP\",\"" + server + "\",80", 15, "OK");//start a TCP connection.
-
-  if ( init) {
-
-    Serial.println("TCP connection ready");
-
-  } 
-
-  String postRequest =
-
-    "POST " + uri + " HTTP/1.0\r\n" +
-
-    "Host: " + server + "\r\n" +
-
-    "Accept: *" + "/" + "*\r\n" +
-
-    "Content-Length: " + data.length() + "\r\n" +
-
-    "Content-Type: application/json\r\n" +
-
-    "\r\n" + data;
-
-  String sendCmd = "AT+CIPSEND=";//determine the number of caracters to be sent.
-
-  boolean openConn = sendCommand(sendCmd + postRequest.length(), 5, ">");
-
-  if (openConn) {
-    Serial.println("Sending.."); 
-    
-    boolean sendPacket = sendCommand(postRequest, 5, "SEND OK");
-
-    if (sendPacket) {
-      Serial.println("Packet sent");
-
-      while (esp.available()) {
-
-        String tmpResp = esp.readString();
-
-        Serial.println(tmpResp);
-
-      }
-
-      // close the connection
-
-      sendCommand("AT+CIPCLOSE", 5, "OK");
-
-    }
-
-  } else {
-    sendCommand("AT+CIPCLOSE", 5, "OK");
-    httpPost(data);
-  }
-}
-
-boolean sendCommand(String command, int maxTime, char readReplay[]) {
-  int retries = 0;
-  boolean found = false;
-  Serial.print(". at command => ");
-  Serial.print(command);
-  Serial.print(" ");
-  while (retries < (maxTime * 1)) {
-    esp.println(command);
-    if (esp.find(readReplay)) {
-      found = true;
-      break;
-    }
-    retries++;
-  }
-  if (found == true) {
-    Serial.println("OYI");
-    return found;
-  }
-  if (found == false) {
-    Serial.println("Fail");
-    return found;
-  }
-}
-
-int getPhotocell() {
-  photocellReading = analogRead(photocellPin);
-
-  sensorData[3] = map(photocellReading, 0, 1023, 0, 100);
-}
-
-void getTempAndHumidity() {
-  float temperature;
-  float humidity;
-
-  temperature = dht.convertCtoF(dht.readTemperature());
-  humidity = dht.readHumidity();
+  //char data[] PROGMEM = "{\"name\":\"tree\",\"date\":\",\"temp\":77.00,\"creator\":\"sensor\",\"moisture\":62.00,\"humidity\":38.00,\"light\":69.00,\"watered\":false}";
+  char data[200];
   
-  sensorData[0] = temperature;
-  sensorData[1] = humidity;
-}
+  readData(data);
 
-void getSoilMoisture()
-{
-    digitalWrite(soilPower, HIGH);//turn D7 "On"
-    delay(10);//wait 10 milliseconds 
-    float moisture = analogRead(soilPin);
-    sensorData[2] = map(moisture, 0, 670, 0, 100);//Read the SIG value form sensor 
-    digitalWrite(soilPower, LOW);//turn D7 "Off"
+  LOGGER.println("data");
+  LOGGER.print(data);
+  LOGGER.print(con_data);
+  
+  sendData(data);
+  LOGGER.println("disconnecting from AP");
+  disconnectWifi();
+//  LOGGER.println("esp sleeping for 3300000 milliseconds.");
+//  sleepWifi(300);
+  LOGGER.println("sleeping dween for 3600000 milliseconds.");
+  delay(1000);
 }
