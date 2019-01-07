@@ -31,10 +31,10 @@ DHT dht( DHT_SENSOR_PIN, DHTTYPE );
 
 // Set your SSID and password here, obviously.
 // If you don't have a password, you should be able to leave it blank.
-//const char ssid[] PROGMEM = "GM Guest WiFi";
-//const char password[] PROGMEM = "";
-const char ssid[] PROGMEM = "WhateverYouWant";
-const char password[] PROGMEM = "chr3ls3y";
+const char ssid[] PROGMEM = "GM Guest WiFi";
+const char password[] PROGMEM = "";
+//const char ssid[] PROGMEM = "WhateverYouWant";
+//const char password[] PROGMEM = "chr3ls3y";
 
 
 const char host[] PROGMEM = "http://monitree.herokuapp.com";
@@ -92,5 +92,6 @@ void loop () {
 //  LOGGER.println("esp sleeping for 3300000 milliseconds.");
 //  sleepWifi(300);
   LOGGER.println("sleeping dween for 3600000 milliseconds.");
-  delay(1000);
+  delay(3600000);
+  resetRadio();
 }
