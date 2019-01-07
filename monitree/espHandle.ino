@@ -1,3 +1,32 @@
+void resetRadio() {
+  if (radio.reset_radio()) {
+    LOGGER.println(F("Reset radio success. Waiting 10 seconds before continuing."));
+
+    delay(10000);
+    
+    resetRadioBaud();
+
+    radio.begin(115200);
+    
+    resetRadioBaud();
+
+    radio.begin(9600);
+  
+    // If the radio is already in station mode, there's no need to do this every
+    // time.
+    if (radio.set_station_mode()) {
+      LOGGER.println(F("Set station mode success."));
+    } else {
+      LOGGER.println(F("Set station mode failed."));
+    } 
+  } else {
+    LOGGER.println(F("Reset radio failed. Waiting 5 seconds then retrying.."));
+    delay(5000);
+    resetRadio();
+  }
+  return;
+}
+
 void connectWifi() {
   if (radio.connect_to_ap(ssid, password)) {
     LOGGER.println(F("Join AP success."));
