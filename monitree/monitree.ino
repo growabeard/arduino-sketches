@@ -47,7 +47,6 @@ const char http_post_content_length[] PROGMEM = "Content-length: ";
 const char http_post_crlf[] PROGMEM = "\r\n";
 const char con_data[] PROGMEM = "{\"name\":\"tree\",\"date\":\",\"temp\":77.00,\"creator\":\"sensor\",\"moisture\":62.00,\"humidity\":38.00,\"light\":69.00,\"watered\":false}";
 
-
 float sensorData[4];
 
 void setup() {
@@ -74,8 +73,8 @@ void setup() {
 
 void loop () {
   LOGGER.println("woke up from my nap..");
-  connectWifi();
-  connectHost();
+  connectWifi(5);
+  connectHost(5);
 
   //char data[] PROGMEM = "{\"name\":\"tree\",\"date\":\",\"temp\":77.00,\"creator\":\"sensor\",\"moisture\":62.00,\"humidity\":38.00,\"light\":69.00,\"watered\":false}";
   char data[200];
@@ -88,10 +87,10 @@ void loop () {
   
   sendData(data);
   LOGGER.println("disconnecting from AP");
-  disconnectWifi();
+  disconnectWifi(5);
 //  LOGGER.println("esp sleeping for 3300000 milliseconds.");
 //  sleepWifi(300);
   LOGGER.println("sleeping dween for 3600000 milliseconds.");
   delay(3600000);
-  resetRadio();
+  resetRadio(5);
 }
