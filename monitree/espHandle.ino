@@ -1,4 +1,4 @@
-void resetRadio() {
+void resetRadio(int retry_count) {
   if (radio.reset_radio()) {
     LOGGER.println(F("Reset radio success. Waiting 10 seconds before continuing."));
 
@@ -20,31 +20,43 @@ void resetRadio() {
       LOGGER.println(F("Set station mode failed."));
     } 
   } else {
-    LOGGER.println(F("Reset radio failed. Waiting 5 seconds then retrying.."));
-    delay(5000);
-    resetRadio();
+    if (retry_count > 0) {
+      LOGGER.println(F("Reset radio failed. Waiting 5 seconds then retrying.."));
+      delay(5000);
+      resetRadio(retry_count - 1);
+    } else {
+      LOGGER.println(F("Reset radio failed.. Skipping."));
+    }
   }
   return;
 }
 
-void connectWifi() {
+void connectWifi(int retry_count) {
   if (radio.connect_to_ap(ssid, password)) {
     LOGGER.println(F("Join AP success."));
   } else {
-    LOGGER.println(F("Join AP failed. Waiting 5 seconds then retrying.."));
-    delay(5000);
-    connectWifi();
+    if (retry_count > 0) {
+      LOGGER.println(F("Join AP failed. Waiting 5 seconds then retrying.."));
+      delay(5000);
+      connectWifi(retry_count - 1);
+    } else {
+      LOGGER.println(F("Join AP failed.. Skipping."));
+    }
   }
   return;
 }
 
-void disconnectWifi() {
+void disconnectWifi(int retry_count) {
   if (radio.disconnect_from_ap()) {
     LOGGER.println(F("Disconnect AP success."));
   } else {
-    LOGGER.println(F("Disconnect AP failed. Waiting 5 seconds then retrying.."));
-    delay(5000);
-    disconnectWifi();
+    if (retry_count > 0) {
+      LOGGER.println(F("Disconnect AP failed. Waiting 5 seconds then retrying.."));
+      delay(5000);
+      disconnectWifi(retry_count - 1);
+    } else {
+      LOGGER.println(F("Disconnect AP failed.. Skipping."));
+    }
   }
   return;
 }
@@ -60,13 +72,17 @@ void sleepWifi(const unsigned long sleepTime) {
   return;
 }
 
-void connectHost() {
+void connectHost(int retry_count) {
    if (radio.connect_progmem(host, port)) {
     LOGGER.println(F("Connect to host success."));
   } else {
-    LOGGER.println(F("Connect to host failed. Waiting 5 seconds then retrying.."));
-    delay(5000);
-    connectHost();
+    if (retry_count > 0) {
+      LOGGER.println(F("Connect to host failed. Waiting 5 seconds then retrying.."));
+      delay(5000);
+      connectHost(retry_count - 1);
+    } else {
+      LOGGER.println(F("Connect to host failed.. Skipping."));
+    }
   }
   return;
 }
