@@ -4,7 +4,6 @@ void readData(char *sendPacket) {
   char humidity[6];
   char light[6];
   boolean wateredPlant = false;
-  Serial.println("reading data");
 
   getTempAndHumidity();
 
@@ -22,10 +21,10 @@ void readData(char *sendPacket) {
 }
 
 void maybeWaterPlant(float moisture, boolean wateredPlant) {
-  if (moisture < moisture_threshold) {
-    digitalWrite(PUMP_RELAY_PIN, HIGH); //turn on pump
-    delay(100); //run pump for 10 seconds
-    digitalWrite(PUMP_RELAY_PIN, LOW); //turn off pump
+  if (moisture < MOISTURE_THRESHOLD ) {
+    digitalWrite(PUMP_RELAY_PIN, HIGH);
+    delay(PUMP_TIME);
+    digitalWrite(PUMP_RELAY_PIN, LOW);
     wateredPlant = true;
   } else {
     wateredPlant = false; 
