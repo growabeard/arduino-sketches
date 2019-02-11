@@ -4,17 +4,6 @@ import requests
 import json
 
 
-
-URL = "http://monitree.herokuapp.com"
-
-header = {"Content-Type": "application/json"}
-
-ser = serial.Serial('COM3', 9600, timeout=0)
-
-startMarker = 60
-endMarker = 62
-
-
 def get_job_from_serial():
     response = b'' #buffer for response
     while True:
@@ -31,20 +20,20 @@ def get_job_from_serial():
 def recvFromArduino():
   global startMarker, endMarker
   
-  ck = " "
+  ck = ""
   x = "z" # any value that is not an end- or startMarker
   byteCount = -1 # to allow for the fact that the last increment will be one too many
   
   # wait for the start character
-  while len(x) > 0 & ord(x) != startMarker: 
-    x = ser.read().decode()
+  while x and ord(x) != startMarker: 
+    x = ser.read()
   
   # save data until the end marker is found
-  while len(x) > 0 & ord(x) != endMarker:
+  while x and ord(x) != endMarker:
     if ord(x) != startMarker:
-      ck = ck + x 
+      ck = ck + x.decode("utf-8")
       byteCount += 1
-    x = ser.read().decode()
+    x = ser.read()
   
   return(ck)
 
@@ -58,30 +47,37 @@ def waitForArduino():
     
     msg = ""
     while msg.find("Arduino is ready") == -1:
-
       while ser.inWaiting() == 0:
-        pass
-        
+        pass        
       msg = recvFromArduino()
 
-      print(msg)
+      print("msg: " + msg)
 
+def sendToWeb(receivedFromArduino):
+    jsonPayload = json.dumps(result)
+    response = requests.post(URL,headers=header,data=jsonPayload)
+    print("json payload: " + jsonPayload)
+    print("response status code: " + response.status_code)
 
+URL = "http://monitree.herokuapp.com"
 
+header = {"Content-Type": "application/json"}
 
+ser = serial.Serial('COM4', 9600, timeout=0)
+
+startMarker = 60
+endMarker = 62
+
+print("Waiting for arduino to be ready..")
 waitForArduino()
+print("Ready")
 
-ser.write("<GET>".encode())
 
-while 1:
-    try:
-      result = recvFromArduino()
-      print(result)
-      jsonPayload = json.dump(ser.read())
-      response = requests.post(URL,headers=header,data=jsonPayload)
-      print(jsonPayload)
-      print(response.status_code)
-      time.sleep(1)
-    except ser.SerialTimeoutException:
-        print('Data could not be read')
-
+while True:
+    print("Getting data")
+    ser.write("<GET>".encode("utf-8"))
+    result = recvFromArduino()
+    print("received from ard: " + result)
+    sendToWeb(result)
+    print("Sent to web. Waiting an 3600 and running again..")
+    time.sleep(60 * 60)
