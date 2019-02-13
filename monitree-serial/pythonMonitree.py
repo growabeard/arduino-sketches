@@ -1,83 +1,52 @@
 import serial
-import time
 import requests
 import json
-
-
-def get_job_from_serial():
-    response = b'' #buffer for response
-    while True:
-        try:
-            response += ser.read() #read any available data or wait for timeout
-            #this technically could only be reading 1 char at a time, but any 
-            #remotely modern pc should easily keep up with 9600 baud
-        except ser.SerialTimeoutException: #timeout probably means end of data
-            #you could also presumably check the length of the buffer if it's always 
-            #a fixed length to determine if the entire message has been sent yet.
-            break
-    return response
+import logging
+import time
 
 def recvFromArduino():
   global startMarker, endMarker
-  
-  ck = ""
-  x = "z" # any value that is not an end- or startMarker
-  byteCount = -1 # to allow for the fact that the last increment will be one too many
-  
-  # wait for the start character
-  while x and ord(x) != startMarker: 
-    x = ser.read()
-  
-  # save data until the end marker is found
-  while x and ord(x) != endMarker:
-    if ord(x) != startMarker:
-      ck = ck + x.decode("utf-8")
-      byteCount += 1
-    x = ser.read()
-  
-  return(ck)
 
+  x = ser.readline().decode('utf-8')
+  if '<' not in x and '>' not in x:
+      return(null)
+  else:
+      return(x.replace('<','').replace('>','').replace('\r\n',''))
 
-def waitForArduino():
-
-   # wait until the Arduino sends 'Arduino Ready' - allows time for Arduino reset
-   # it also ensures that any bytes left over from a previous message are discarded
-   
-    global startMarker, endMarker
-    
-    msg = ""
-    while msg.find("Arduino is ready") == -1:
-      while ser.inWaiting() == 0:
-        pass        
-      msg = recvFromArduino()
-
-      print("msg: " + msg)
 
 def sendToWeb(receivedFromArduino):
-    jsonPayload = json.dumps(result)
-    response = requests.post(URL,headers=header,data=jsonPayload)
-    print("json payload: " + jsonPayload)
-    print("response status code: " + response.status_code)
+    proxies = {
+      'http': 'proxy',
+      'https': 'proxy',
+    }
+    URL = "http://monitree.herokuapp.com/readings"
+    header = {"Content-Type": "application/json", "Host": "monitree.herokuapp.com", "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/28.0.1500.52 Safari/537.36"}
 
-URL = "http://monitree.herokuapp.com"
+    response = requests.post(URL,headers=header,data=receivedFromArduino,proxies=proxies)
 
-header = {"Content-Type": "application/json"}
+    logging.debug("full request: "  + str(response.request.headers) + str(response.request.body) + str(response.request.url))
+    logging.debug("response status code: " + str(response.status_code))
 
-ser = serial.Serial('COM4', 9600, timeout=0)
+logging.basicConfig(level=logging.DEBUG, filename="C:/monitree-logs/log.log", format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+
+ser = serial.Serial()
+ser.port = 'COM4'
+ser.baudrate = 9600
+ser.timeout = 1
+ser.dtr = False
+ser.open()
+ser.write(b'\x00')
 
 startMarker = 60
 endMarker = 62
 
-print("Waiting for arduino to be ready..")
-waitForArduino()
-print("Ready")
-
+logging.debug("Ready")
 
 while True:
-    print("Getting data")
-    ser.write("<GET>".encode("utf-8"))
-    result = recvFromArduino()
-    print("received from ard: " + result)
-    sendToWeb(result)
-    print("Sent to web. Waiting an 3600 and running again..")
-    time.sleep(60 * 60)
+  logging.debug("Getting data")
+  ser.write("<GET>".encode("utf-8"))
+  result = recvFromArduino()
+  logging.debug("received from ard: " + result)
+  sendToWeb(result)
+  logging.debug("Sent to web. Sleeping for 3600..")
+  time.sleep(3600)
