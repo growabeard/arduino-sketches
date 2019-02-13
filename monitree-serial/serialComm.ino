@@ -110,7 +110,7 @@ void replyToPC(char *data) {
 
     newDataFromPC = false;
 
-    Serial.print("<Msg ");
+    Serial.print("<");
 
     Serial.print(data);
 
