@@ -42,7 +42,7 @@ static const int DHT_SENSOR_PIN = 2;
 
 DHT dht( DHT_SENSOR_PIN, DHTTYPE );
 
-const int PUMP_TIME PROGMEM = 10000;
+const int PUMP_TIME PROGMEM = 3516;
 
 
 const int MOISTURE_THRESHOLD PROGMEM = 35;
