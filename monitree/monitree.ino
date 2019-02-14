@@ -26,8 +26,10 @@ int soilPower = 6;//Variable for Soil moisture Power
 static const int DHT_SENSOR_PIN = 2;
 DHT dht( DHT_SENSOR_PIN, DHTTYPE );
 
-// initialize the library with the numbers of the interface pins
-//LiquidCrystal lcd(7, 8, 9, 10, 11, 12);
+const int PUMP_TIME PROGMEM = 30000;
+const int MOISTURE_THRESHOLD PROGMEM = 35;
+static const int PUMP_RELAY_PIN = 13;
+
 
 // Set your SSID and password here, obviously.
 // If you don't have a password, you should be able to leave it blank.
