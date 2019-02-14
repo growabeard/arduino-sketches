@@ -3,15 +3,13 @@ void readData(char *sendPacket) {
   char moisture[6];
   char humidity[6];
   char light[6];
-  boolean wateredPlant = false;
-  Serial.println("reading data");
 
   getTempAndHumidity();
 
   getPhotocell();
 
   getSoilMoisture();
-  maybeWaterPlant(sensorData[2], &wateredPlant);
+  boolean wateredPlant = maybeWaterPlant(sensorData[2]);
   
   dtostrf(sensorData[0], 3, 2, temp);
   dtostrf(sensorData[2], 3, 2, moisture);
@@ -21,8 +19,15 @@ void readData(char *sendPacket) {
   sprintf(sendPacket,"{\"name\":\"tree\",\"date\":\"\",\"temp\":%s,\"creator\":\"sensor\",\"moisture\":%s,\"humidity\":%s,\"light\":%s,\"watered\":%s}",temp,moisture,humidity,light,wateredPlant ? "true" : "false");
 }
 
-void maybeWaterPlant(float moisture, boolean wateredPlant) {
-  wateredPlant = false;
+boolean maybeWaterPlant(float moisture) {
+  if (moisture < MOISTURE_THRESHOLD ) {
+    digitalWrite(PUMP_RELAY_PIN, HIGH);
+    delay(PUMP_TIME);
+    digitalWrite(PUMP_RELAY_PIN, LOW);
+    return true;
+  } else {
+    return false; 
+  }
 }
 
 int getPhotocell() {
