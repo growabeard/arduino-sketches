@@ -4,15 +4,28 @@ import json
 import logging
 import time
 
+def callToGetData():
+  askArduinoForData()
+  result = recvFromArduino()
+  logging.debug("received from ard: " + result)
+  if result is not '':
+    return result
+  return callToGetData()
+
+def askArduinoForData():
+  logging.debug("Getting data")
+  ser.write("<GET>".encode("utf-8"))
+
 def recvFromArduino():
   global startMarker, endMarker
 
   x = ser.readline().decode('utf-8')
-  if '<' not in x and '>' not in x:
-      return(null)
+  if ('<' not in x and '>' not in x) or 'Arduino is ready' in x:
+      logging.debug("Monitree isn't ready")
+      return('')
   else:
+      logging.debug("Monitree is ready")
       return(x.replace('<','').replace('>','').replace('\r\n',''))
-
 
 def sendToWeb(receivedFromArduino):
     proxies = {
@@ -43,10 +56,7 @@ endMarker = 62
 logging.debug("Ready")
 
 while True:
-  logging.debug("Getting data")
-  ser.write("<GET>".encode("utf-8"))
-  result = recvFromArduino()
-  logging.debug("received from ard: " + result)
+  result = callToGetData()
   sendToWeb(result)
   logging.debug("Sent to web. Sleeping for 3600..")
   time.sleep(3600)
